@@ -1,0 +1,57 @@
+# -----------------------------------
+# SOLR INSTALLATION & SERVER FILES
+# -----------------------------------
+solr-*/            # downloaded Solr distributions
+server/            # Solr server directory if extracted
+bin/solr           # Solr executable
+bin/solr.cmd
+
+# -----------------------------------
+# SOLR CORES & INDEX DATA
+# -----------------------------------
+solr_home/**/data/     # index files for each core
+solr_home/**/core.properties
+solr_home/logs/
+server/logs/
+logs/
+**/logs/
+
+# Allow configsets, block only generated data
+solr_home/**/conf/managed-schema
+solr_home/**/conf/solrconfig.xml
+# Uncomment if you want to track schema/config:
+#!solr_home/**/conf/
+
+# -----------------------------------
+# JVM & SYSTEM ARTIFACTS
+# -----------------------------------
+*.jar
+*.war
+*.pid
+*.tmp
+*.lock
+
+# -----------------------------------
+# OS-SPECIFIC JUNK
+# -----------------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------------
+# PYTHON (if scraper uses Python)
+# -----------------------------------
+__pycache__/
+*.pyc
+.env
+
+# -----------------------------------
+# NODE (if frontend integration exists)
+# -----------------------------------
+node_modules/
+
+# -----------------------------------
+# IDE / EDITOR FILES
+# -----------------------------------
+.idea/
+.vscode/
+*.iml

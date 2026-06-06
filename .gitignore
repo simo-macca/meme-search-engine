@@ -1,0 +1,14 @@
+# globally
+.idea
+.vscode
+.DS_Store
+
+# backend
+backend/.venv
+backend/raw_data
+backend/solr-9.10.0
+backend/package-lock.json
+
+# frontend
+#placeholder before backend connection
+raw_data 
