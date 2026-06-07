@@ -47,8 +47,8 @@ Before running the application, ensure you have the following global dependencie
 
 For detailed, step-by-step installation logs, environment configurations, and core setup instructions, please refer to the documentation inside the respective subdirectories:
 
-* To set up the web scrapers, local environment variables, and configure your Homebrew Apache Solr core, follow the [Backend Setup Guide](https://www.google.com/search?q=./backend/README.md).
-* To configure and launch the Vite development server and view the UI, follow the [Frontend Setup Guide](https://www.google.com/search?q=./frontend/README.md).
+* To set up the web scrapers, local environment variables, and configure your Homebrew Apache Solr core, follow the [Backend Setup Guide](./backend/README.md).
+* To configure and launch the Vite development server and view the UI, follow the [Frontend Setup Guide](./frontend/README.md).
 
 ---
 
