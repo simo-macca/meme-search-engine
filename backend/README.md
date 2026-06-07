@@ -318,3 +318,30 @@ bin/solr zk upconfig \
 
 curl "http://localhost:8983/solr/admin/collections?action=RELOAD&name=memes_collection"
 ```
+
+
+[//]: # (  <filter>)
+[//]: # (    <filter-name>CorsFilter</filter-name>)
+[//]: # (    <filter-class>org.eclipse.jetty.servlets.CrossOriginFilter</filter-class>)
+[//]: # (    <init-param>)
+[//]: # (      <param-name>allowedOrigins</param-name>)
+[//]: # (      <param-value>http://localhost:3000/</param-value>)
+[//]: # (    </init-param>)
+[//]: # (    <init-param>)
+[//]: # (      <param-name>allowedMethods</param-name>)
+[//]: # (      <param-value>GET,POST,PUT,DELETE,OPTIONS,HEAD</param-value>)
+[//]: # (    </init-param>)
+[//]: # (    <init-param>)
+[//]: # (      <param-name>allowedHeaders</param-name>)
+[//]: # (      <param-value>X-Requested-With,Content-Type,Accept,Origin</param-value>)
+[//]: # (    </init-param>)
+[//]: # (    <init-param>)
+[//]: # (      <param-name>allowCredentials</param-name>)
+[//]: # (      <param-value>true</param-value>)
+[//]: # (    </init-param>)
+[//]: # (  </filter>)
+[//]: # ()
+[//]: # (  <filter-mapping>)
+[//]: # (    <filter-name>CorsFilter</filter-name>)
+[//]: # (    <url-pattern>/*</url-pattern>)
+[//]: # (  </filter-mapping>)
