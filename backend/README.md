@@ -71,21 +71,30 @@ backend/
 
 ### 1. Install Apache Solr
 
-If you are using macOS with Homebrew:
+Download the latest Solr binary release from the official website: **[https://solr.apache.org/downloads.html](https://solr.apache.org/downloads.html)**
+
+Extract the downloaded archive (e.g., `solr-10.x.x`). To start Solr, navigate to the extracted folder in your terminal and run:
 
 ```bash
-brew install solr
-```
-
-Start Solr:
-
-```bash
-solr start -p 8983
+cd /path/to/solr-10.x.x
+bin/solr start -p 8983
 ```
 
 ---
 
-### 2. Create a Virtual Environment
+### 2. Configure Environment
+
+Create a `.env` file in the project root:
+
+```text
+SOLR_BASE_PATH=http://localhost:8983
+FILES_TO_INDEX_FOLDER=./raw_data
+SOLR_INSTALL_DIR=/absolute/path/to/your/solr-10.x.x   # Replace with your actual extracted folder path
+```
+
+---
+
+### 3. Create a Virtual Environment
 
 From the project root:
 
@@ -96,7 +105,7 @@ source .venv/bin/activate
 
 ---
 
-### 3. Install Dependencies
+### 4. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -105,7 +114,7 @@ playwright install
 
 ---
 
-### 4. Run the Complete Pipeline
+### 5. Run the Complete Pipeline
 
 ```bash
 python3 main.py
@@ -117,9 +126,9 @@ The orchestrator will guide you through the entire process and handle setup chec
 
 Before execution begins, it verifies:
 
-- A Python virtual environment is active
-- Apache Solr is reachable
-- Required Python dependencies are installed
+* A Python virtual environment is active
+* Apache Solr is reachable
+* Required Python dependencies are installed
 
 If packages are missing, the script can offer to install them automatically.
 
@@ -129,10 +138,10 @@ If packages are missing, the script can offer to install them automatically.
 
 Launches all spiders to collect fresh meme data from:
 
-- 9GAG
-- iFunny
-- Memedroid
-- Memes.com
+* 9GAG
+* iFunny
+* Memedroid
+* Memes.com
 
 Scraped results are stored as JSON files inside:
 
@@ -152,17 +161,17 @@ Processes all collected datasets and removes duplicate meme entries to maintain 
 
 The script:
 
-- Creates the Solr collection if necessary
-- Defines the collection schema
-- Uploads all deduplicated meme data
+* Creates the Solr collection if necessary
+* Defines the collection schema
+* Uploads all deduplicated meme data
 
 Configured fields include:
 
-- `id`
-- `title`
-- `media_type`
-- `media_src`
-- `tags`
+* `id`
+* `title`
+* `media_type`
+* `media_src`
+* `tags`
 
 ---
 
@@ -170,10 +179,10 @@ Configured fields include:
 
 At the end of execution, the script can:
 
-- Restart Solr with clustering enabled
-- Locate Homebrew configuration paths automatically
-- Apply required clustering settings
-- Reload the Solr collection
+* Restart Solr with clustering enabled
+* Locate your Solr configuration paths automatically (via `.env`)
+* Apply required clustering settings
+* Reload the Solr collection
 
 This step is optional and only needed for topic clustering functionality.
 
@@ -201,14 +210,7 @@ Output:
 
 ## Solr Indexing
 
-Ensure your `.env` file exists:
-
-```text
-SOLR_BASE_PATH=http://localhost:8983
-FILES_TO_INDEX_FOLDER=./raw_data
-```
-
-Then execute:
+Ensure your `.env` file is properly configured. Then execute:
 
 ```bash
 python3 execute_solr_setup.py
@@ -216,10 +218,10 @@ python3 execute_solr_setup.py
 
 This script:
 
-- Creates the Solr collection
-- Defines the schema
-- Uploads JSON documents
-- Rebuilds the index
+* Creates the Solr collection
+* Defines the schema
+* Uploads JSON documents
+* Rebuilds the index
 
 ---
 
@@ -227,42 +229,16 @@ This script:
 
 ### Starting Solr
 
-```bash
-solr start -p 8983
-```
-
----
-
-### Environment Variables
-
-Create a `.env` file in the project root:
-
-```text
-SOLR_BASE_PATH=http://localhost:8983
-FILES_TO_INDEX_FOLDER=./raw_data
-```
-
----
-
-### Running Index Setup
+Navigate to your Solr installation directory and run:
 
 ```bash
-python3 execute_solr_setup.py
+bin/solr start -p 8983
 ```
-
-The script automatically:
-
-- Checks collection existence
-- Creates the collection when needed
-- Configures schema fields
-- Uploads indexed documents
-
----
 
 ### Stopping Solr
 
 ```bash
-solr stop -p 8983
+bin/solr stop -p 8983
 ```
 
 ---
@@ -271,17 +247,15 @@ solr stop -p 8983
 
 To power a "Topics Map" or grouped-search experience, Apache Solr can be configured to use the Lingo clustering algorithm.
 
-### Step 1: Open the Default Configset
+### Step 1: Locate the Default Configset
 
-```bash
-open $(brew --prefix solr)/server/solr/configsets/_default/conf
-```
+Navigate to your extracted Solr directory. The configuration files are located at: `/path/to/solr-10.x.x/server/solr/configsets/_default/conf`
 
 ---
 
 ### Step 2: Update `managed-schema.xml`
 
-Add the following fields inside the `<schema>` tag:
+Open the `managed-schema.xml` in that directory and add the following fields inside the `<schema>` tag:
 
 ```xml
 <field name="title" type="text_general" indexed="true" stored="true" multiValued="true"/>
@@ -294,7 +268,7 @@ Add the following fields inside the `<schema>` tag:
 
 ### Step 3: Update `solrconfig.xml`
 
-Add the clustering search component:
+Open the `solrconfig.xml` in the same directory and add the clustering search component:
 
 ```xml
 <searchComponent class="org.apache.solr.handler.clustering.ClusteringComponent" name="clustering">
@@ -310,7 +284,7 @@ Add the clustering search component:
 
 ### Step 4: Enable Clustering in the Search Handler
 
-Replace or update the `/select` request handler:
+Replace or update the `/select` request handler in `solrconfig.xml`:
 
 ```xml
 <requestHandler name="/select" class="solr.SearchHandler">
@@ -331,16 +305,16 @@ Replace or update the `/select` request handler:
 
 ### Step 5: Restart and Reload
 
-You can perform these steps automatically through `main.py` or manually:
+You can perform these steps automatically through `main.py` or manually using the Solr `bin` script:
 
 ```bash
-solr restart -p 8983 \
+bin/solr restart -p 8983 \
     -Dsolr.modules=clustering \
     -Dsolr.clustering.enabled=true
 
-solr zk upconfig \
+bin/solr zk upconfig \
     -n memes_collection.AUTOCREATED \
-    -d $(brew --prefix solr)/server/solr/configsets/_default/conf
+    -d server/solr/configsets/_default/conf
 
 curl "http://localhost:8983/solr/admin/collections?action=RELOAD&name=memes_collection"
 ```

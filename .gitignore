@@ -117,3 +117,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+solr-10.0.0/
+.idea/
+.vscode/

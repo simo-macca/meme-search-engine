@@ -7,6 +7,10 @@ from execute_solr_setup import execute_solr_setup
 
 from importlib import metadata
 from packaging.requirements import Requirement
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def check_requirements(file_path="requirements.txt"):
     """Checks if all packages in requirements.txt are installed and compatible."""
@@ -37,6 +41,7 @@ def check_requirements(file_path="requirements.txt"):
         print(f"❌ Version conflict: {e}")
         return False
 
+
 def install_requirements(file_path='requirements.txt'):
     """Attempts to install requirements using pip."""
     print(f"📦 Attempting to install missing dependencies from {file_path}...")
@@ -49,11 +54,10 @@ def install_requirements(file_path='requirements.txt'):
         print(f"❌ Failed to install dependencies. Error: {e}")
         return False
 
+
 def is_solr_running():
     """Checks if Solr is reachable at the configured URL."""
     # retrieves the base path from your .env file logic
-    from dotenv import load_dotenv
-    load_dotenv()
     solr_url = os.getenv('SOLR_BASE_PATH', 'http://localhost:8983')
 
     try:
@@ -62,6 +66,7 @@ def is_solr_running():
         return response.status_code == 200
     except requests.exceptions.RequestException:
         return False
+
 
 def run_command(description, command):
     print(f"\n➡️  {description}")
@@ -72,14 +77,26 @@ def run_command(description, command):
         print(f"\n❌ Failed: {e}")
         sys.exit(1)
 
-def get_brew_solr_conf_dir():
-    # finds the Homebrew Solr configset directory.
-    try:
-        brew_prefix = subprocess.check_output(['brew', '--prefix', 'solr']).decode('utf-8').strip()
-        return f"{brew_prefix}/server/solr/configsets/_default/conf"
-    except subprocess.CalledProcessError:
-        print("❌ Could not detect Homebrew Solr path. Ensure Solr is installed via brew.")
+
+def get_solr_conf_dir():
+    """Finds the Solr configset directory from the downloaded Solr installation."""
+    solr_dir = os.getenv('SOLR_INSTALL_DIR')
+
+    if not solr_dir:
+        print("\n⚠️ SOLR_INSTALL_DIR not found in .env.")
+        solr_dir = input(
+            "Please enter the absolute path to your downloaded Solr folder (e.g., /Users/name/Downloads/solr-9.4.0): ").strip()
+
+    # Construct the path to the _default/conf directory
+    conf_dir = os.path.join(solr_dir, "server", "solr", "configsets", "_default", "conf")
+
+    if not os.path.exists(conf_dir):
+        print(f"❌ Could not find config directory at {conf_dir}.")
+        print("Ensure you provided the root path of your Solr installation.")
         sys.exit(1)
+
+    return conf_dir
+
 
 def main():
     # user confirmation based on README instructions
@@ -110,7 +127,7 @@ def main():
     print("\n--- Checking Solr Server ---")
     if not is_solr_running():
         print("❌ Solr server is not running or unreachable.")
-        print("Please start Solr globally by running: solr start -p 8983")
+        print("Please start Solr by navigating to your Solr directory and running: bin/solr start -p 8983")
         sys.exit(1)
     print("✅ Solr is online.")
 
@@ -128,7 +145,7 @@ def main():
     print(
         "This optional step will:\n"
         "  • Restart Solr globally with the clustering module enabled\n"
-        "  • Upload the ZooKeeper configurations dynamically from Homebrew\n"
+        "  • Upload the ZooKeeper configurations dynamically from your Solr installation directory\n"
         "  • Reload the 'memes_collection'\n\n"
         "Make sure you have modified the solrconfig.xml and managed-schema.xml as per the README."
     )
@@ -138,15 +155,18 @@ def main():
         print("ℹ️  Clustering step skipped. You can run it later if needed.")
         sys.exit(0)
 
+    solr_dir = os.getenv('SOLR_INSTALL_DIR')
+    solr_bin = os.path.join(solr_dir, 'bin', 'solr') if solr_dir else 'solr'
+
     run_command(
         "Restarting Solr with clustering enabled",
-        "solr restart -p 8983 -Dsolr.modules=clustering -Dsolr.clustering.enabled=true"
+        f"{solr_bin} restart -p 8983 -Dsolr.modules=clustering -Dsolr.clustering.enabled=true"
     )
 
-    zk_conf_dir = get_brew_solr_conf_dir()
+    zk_conf_dir = get_solr_conf_dir()
     run_command(
         "Uploading ZooKeeper config for memes_collection",
-        f"solr zk upconfig -n memes_collection.AUTOCREATED -d {zk_conf_dir}"
+        f"{solr_bin} zk upconfig -n memes_collection.AUTOCREATED -d {zk_conf_dir}"
     )
 
     run_command(
@@ -155,6 +175,7 @@ def main():
     )
 
     print("\n🎉 Clustering enabled successfully!")
+
 
 if __name__ == "__main__":
     main()
