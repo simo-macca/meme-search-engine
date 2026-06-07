@@ -35,4 +35,6 @@ coverage
 # Vitest
 __screenshots__/
 
-package-lock.json
+# Vite
+*.timestamp-*-*.mjs
+.env

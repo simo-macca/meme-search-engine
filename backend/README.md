@@ -1,151 +1,346 @@
 # Memes Search Engine – Backend
 
-This backend project handles the end-to-end pipeline for a meme search engine: from scraping top meme platforms to indexing the data into an Apache Solr server with advanced clustering capabilities.
+This backend powers the complete data pipeline for a meme search engine, from scraping popular meme platforms to indexing content in Apache Solr with optional topic clustering capabilities.
 
-## 🚀 Getting Started
+## Overview
 
-### 1\. Environment Setup
+### Features
 
-Create a virtual environment in the root folder, activate it, and install the necessary dependencies:
+- Multi-source meme scraping
+  - 9GAG
+  - iFunny
+  - Memedroid
+  - Memes.com
+- Automatic duplicate detection and removal
+- Apache Solr collection creation and schema management
+- Automated indexing pipeline
+- Optional topic clustering using Solr's Lingo algorithm
+- Interactive orchestration through a single entry point
+
+---
+
+## Architecture
+
+```text
+Meme Platforms
+(9GAG, iFunny, Memedroid, Memes.com)
+                │
+                ▼
+      Scrapy / Playwright Spiders
+                │
+                ▼
+          raw_data/*.json
+                │
+                ▼
+          Deduplication
+                │
+                ▼
+      Apache Solr Collection
+                │
+                ▼
+          Search Engine
+                │
+                ▼
+ Optional Topic Clustering (Lingo)
+```
+
+---
+
+## Backend Directory Structure
+
+```text
+backend/
+├── meme_crawler/               # Scrapy project folder
+│   ├── spiders/                # Target scrapers (9GAG, iFunny, Memedroid, Memes.com)
+│   │   ├── ifunny_spider.py
+│   │   ├── memedroid_spider.py
+│   │   ├── memes_spider.py
+│   │   ├── nine_gag_spider.py
+│   │   └── nine_gag_wtf_spider.py
+│   └── settings.py             # Scrapy settings and pipeline adjustments
+├── execute_solr_setup.py       # Configures Solr schema fields and handles core setups
+├── main.py                     # Main orchestrator pipeline script
+├── requirements.txt            # Python dependencies list
+├── run_spiders.py              # Sequence crawl executor and duplicate filter logic
+└── scrapy.cfg                  # Scrapy deployment configuration configuration
+```
+
+---
+
+## Quick Start (Recommended)
+
+### 1. Install Apache Solr
+
+If you are using macOS with Homebrew:
+
+```bash
+brew install solr
+```
+
+Start Solr:
+
+```bash
+solr start -p 8983
+```
+
+---
+
+### 2. Create a Virtual Environment
+
+From the project root:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+---
+
+### 3. Install Dependencies
+
+```bash
 pip install -r requirements.txt
 playwright install
 ```
 
-### 2\. Full Pipeline Execution (Recommended)
+---
 
-The easiest way to run the entire backend is through the `main.py` script. This script acts as an orchestrator for the entire process.
-
-To run the full pipeline:
+### 4. Run the Complete Pipeline
 
 ```bash
 python3 main.py
 ```
 
-**What `main.py` does:**
+The orchestrator will guide you through the entire process and handle setup checks automatically. The `main.py` script serves as the central orchestrator for the entire backend workflow.
 
-  * **Pre-flight Checks**: Verifies that your virtual environment is active and that the Solr server is running and reachable.
-  * **Dependency Management**: Checks if all packages in `requirements.txt` are installed and offers to install missing ones automatically.
-  * **Phase 1: Scraping**: Triggers all spiders (9GAG, iFunny, Memedroid, Memes.com) to collect fresh data.
-  * **Phase 2: deduplication**: Automatically removes duplicate meme entries across all scraped JSON files to ensure data integrity.
-  * **Phase 3: Solr Indexing**: Communicates with your Solr instance to create the collection, define the schema, and index the deduplicated data.
-  * **Phase 4: Optional Clustering**: Provides an interactive prompt to restart Solr with the clustering module enabled and apply the necessary Lingo algorithm configurations.
+### Pre-flight Checks
 
------
+Before execution begins, it verifies:
 
-### 3\. Manual Steps (Alternative)
+- A Python virtual environment is active
+- Apache Solr is reachable
+- Required Python dependencies are installed
 
-If you prefer to run parts of the pipeline manually, you can use the individual scripts:
+If packages are missing, the script can offer to install them automatically.
 
-#### Scraping and Data Preparation
+---
 
-Run the master scraping script to crawl platforms and save data to the `/raw_data` directory:
+### Phase 1: Scraping
 
-```bash
-python3 ./run_spiders.py
+Launches all spiders to collect fresh meme data from:
+
+- 9GAG
+- iFunny
+- Memedroid
+- Memes.com
+
+Scraped results are stored as JSON files inside:
+
+```text
+/raw_data
 ```
 
-*This script crawls 9GAG, iFunny, Memedroid, and Memes.com, saving the output as `.json` files.*
+---
 
-#### Solr Indexing
+### Phase 2: Deduplication
 
-**Note:** If you haven't already, please review the **Solr Configuration** section below to ensure your server is running and your schema is correctly defined.
+Processes all collected datasets and removes duplicate meme entries to maintain data quality and indexing consistency.
 
-Once confirmed, ensure your `.env` file is configured with `SOLR_BASE_PATH` and `FILES_TO_INDEX_FOLDER`, then run:
+---
+
+### Phase 3: Solr Collection Setup & Indexing
+
+The script:
+
+- Creates the Solr collection if necessary
+- Defines the collection schema
+- Uploads all deduplicated meme data
+
+Configured fields include:
+
+- `id`
+- `title`
+- `media_type`
+- `media_src`
+- `tags`
+
+---
+
+### Phase 4: Optional Topic Clustering
+
+At the end of execution, the script can:
+
+- Restart Solr with clustering enabled
+- Locate Homebrew configuration paths automatically
+- Apply required clustering settings
+- Reload the Solr collection
+
+This step is optional and only needed for topic clustering functionality.
+
+---
+
+## Manual Workflow
+
+If you prefer running each stage independently, use the following scripts.
+
+## Scraping
+
+Run all spiders:
 
 ```bash
-python3 ./execute_solr_setup.py
+python3 run_spiders.py
 ```
 
-*This script deletes the existing collection (if any), recreates it with the proper schema, and indexes your JSON files.*
+Output:
 
------
-
-## 🔍 Solr Configuration
-
-### 1\. Starting the Server
-
-Navigate to your Solr directory and start the server in cloud mode:
-
-```bash
-cd solr-9.10.0
-bin/solr start -cloud -p 8983
+```text
+/raw_data/*.json
 ```
 
-### 2\. Basic Indexing
+---
 
-Add a `.env` file in the root folder with the following configuration:
+## Solr Indexing
+
+Ensure your `.env` file exists:
 
 ```text
 SOLR_BASE_PATH=http://localhost:8983
 FILES_TO_INDEX_FOLDER=./raw_data
 ```
 
-Execute the setup script. This script checks if the collection exists, creates it if necessary, defines the schema fields (`id`, `title`, `media_type`, `media_src`, `tags`), and indexes your JSON files:
+Then execute:
 
 ```bash
-python3 ./execute_solr_setup.py
+python3 execute_solr_setup.py
 ```
 
-### 3\. Stopping the Server
+This script:
 
-Navigate to your Solr directory and start the server in cloud mode:
+- Creates the Solr collection
+- Defines the schema
+- Uploads JSON documents
+- Rebuilds the index
+
+---
+
+## Solr Configuration
+
+### Starting Solr
 
 ```bash
-cd solr-9.10.0
-bin/solr stop -p 8983
+solr start -p 8983
 ```
 
------
+---
 
-## 🧩 Advanced: Topic Clustering
+### Environment Variables
 
-To enable the **Lingo** clustering algorithm for a "Topics Map" view, follow these steps:
+Create a `.env` file in the project root:
 
-1.  **Modify `managed-schema.xml`**: Usually located at `server/solr/configsets/_default/conf`. Add these tags inside the `<schema>` tag:
+```text
+SOLR_BASE_PATH=http://localhost:8983
+FILES_TO_INDEX_FOLDER=./raw_data
+```
 
-    ```xml
-    <field name="title" type="text_general" indexed="true" stored="true" multiValued="true"/>
-    <field name="tags" type="text_general" indexed="true" stored="true" multiValued="true"/>
-    <field name="media_type" type="string" indexed="true" stored="true" multiValued="true"/>
-    <field name="media_src" type="string" indexed="true" stored="true" multiValued="true"/>
-    ```
+---
 
-2.  **Modify `solrconfig.xml`**: Add the clustering search component:
+### Running Index Setup
 
-    ```xml
-    <searchComponent class="org.apache.solr.handler.clustering.ClusteringComponent" name="clustering">
-        <lst name="engine">
+```bash
+python3 execute_solr_setup.py
+```
+
+The script automatically:
+
+- Checks collection existence
+- Creates the collection when needed
+- Configures schema fields
+- Uploads indexed documents
+
+---
+
+### Stopping Solr
+
+```bash
+solr stop -p 8983
+```
+
+---
+
+## Optional: Enable Topic Clustering (Advanced)
+
+To power a "Topics Map" or grouped-search experience, Apache Solr can be configured to use the Lingo clustering algorithm.
+
+### Step 1: Open the Default Configset
+
+```bash
+open $(brew --prefix solr)/server/solr/configsets/_default/conf
+```
+
+---
+
+### Step 2: Update `managed-schema.xml`
+
+Add the following fields inside the `<schema>` tag:
+
+```xml
+<field name="title" type="text_general" indexed="true" stored="true" multiValued="true"/>
+<field name="tags" type="text_general" indexed="true" stored="true" multiValued="true"/>
+<field name="media_type" type="string" indexed="true" stored="true" multiValued="true"/>
+<field name="media_src" type="string" indexed="true" stored="true" multiValued="true"/>
+```
+
+---
+
+### Step 3: Update `solrconfig.xml`
+
+Add the clustering search component:
+
+```xml
+<searchComponent class="org.apache.solr.handler.clustering.ClusteringComponent" name="clustering">
+    <lst name="engine">
         <str name="name">lingo</str>
         <str name="clustering.fields">tags</str>
         <str name="clustering.algorithm">Lingo</str>
-        </lst>
-    </searchComponent>
-    ```
+    </lst>
+</searchComponent>
+```
 
-3.  **Update Request Handler**: Substitute the `/select` request handler in `solrconfig.xml` to enable clustering:
+---
 
-    ```xml
-    <requestHandler name="/select" class="solr.SearchHandler">
-        <lst name="defaults">
-          <str name="echoParams">explicit</str>
-          <int name="rows">10</int>
-          <bool name="clustering">true</bool>
-          <str name="clustering.engine">lingo</str>
-        </lst>
-        <arr name="last-components">
-          <str>clustering</str>
-        </arr>
-    </requestHandler>
-    ```
+### Step 4: Enable Clustering in the Search Handler
 
-4.  **Restart and Update**: Restart Solr with the clustering module enabled and upload the new configurations:
+Replace or update the `/select` request handler:
 
-    ```bash
-    bin/solr restart -cloud -p 8983 -Dsolr.modules=clustering -Dsolr.clustering.enabled=true
-    bin/solr zk upconfig -n memes_collection.AUTOCREATED -d server/solr/configsets/_default/conf
-    curl "http://localhost:8983/solr/admin/collections?action=RELOAD&name=memes_collection"
-    ```
+```xml
+<requestHandler name="/select" class="solr.SearchHandler">
+    <lst name="defaults">
+        <str name="echoParams">explicit</str>
+        <int name="rows">10</int>
+        <bool name="clustering">true</bool>
+        <str name="clustering.engine">lingo</str>
+    </lst>
+
+    <arr name="last-components">
+        <str>clustering</str>
+    </arr>
+</requestHandler>
+```
+
+---
+
+### Step 5: Restart and Reload
+
+You can perform these steps automatically through `main.py` or manually:
+
+```bash
+solr restart -p 8983 \
+    -Dsolr.modules=clustering \
+    -Dsolr.clustering.enabled=true
+
+solr zk upconfig \
+    -n memes_collection.AUTOCREATED \
+    -d $(brew --prefix solr)/server/solr/configsets/_default/conf
+
+curl "http://localhost:8983/solr/admin/collections?action=RELOAD&name=memes_collection"
+```
