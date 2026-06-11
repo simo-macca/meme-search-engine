@@ -1,7 +1,5 @@
 import json
-
 import scrapy
-
 
 class MemesSpider(scrapy.Spider):
     name = "memes_spider"

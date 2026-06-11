@@ -2,7 +2,6 @@ import uuid
 import scrapy
 from scrapy_playwright.page import PageMethod
 
-
 class MemedroidSpider(scrapy.Spider):
     name = "memedroid_spider"
 
@@ -28,7 +27,7 @@ class MemedroidSpider(scrapy.Spider):
         for i in range(start_page, end_page + 1):
             url = f"https://www.memedroid.com/memes/trending?page={i}"
 
-            print(f"📄 MemedroidSpider: Requesting page {i}...")
+            self.logger.info(f"MemedroidSpider: Requesting page {i}...")
 
             yield scrapy.Request(
                 url,
@@ -46,7 +45,7 @@ class MemedroidSpider(scrapy.Spider):
             '//a[contains(@class, "gallery-image-link")]//img | //div[contains(@class, "gallery-video-container")]//video'
         )
 
-        print(f"✅ MemedroidSpider {response.url.split('=')[-1]}: Found {len(content_nodes)} items.")
+        self.logger.info(f"MemedroidSpider page {response.url.split('=')[-1]}: Found {len(content_nodes)} items.")
 
         for node in content_nodes:
             card = node.xpath('./ancestor::article[contains(@class, "gallery-item")]')

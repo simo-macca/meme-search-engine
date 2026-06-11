@@ -1,8 +1,10 @@
 import json
 import os
 import sys
+import logging
 import requests
 
+logger = logging.getLogger(__name__)
 
 class SolrSetup:
     collection_name: str = 'memes_collection'
@@ -26,14 +28,14 @@ class SolrSetup:
         try:
             response = requests.post(url, json=payload)
             if response.status_code != 200:
-                print("Error creating collection:", response.text)
+                logger.error(f"Error creating collection: {response.text}")
                 return
-            print(f"Collection '{self.collection_name}' created successfully")
+            logger.info(f"Collection '{self.collection_name}' created successfully")
 
             self.add_fields_to_collection()
-            self.configure_clustering()  # <-- Automated Clustering Injection
+            self.configure_clustering()
         except Exception as e:
-            print("Exception creating collection:", e)
+            logger.error(f"Exception creating collection: {e}")
 
     def add_fields_to_collection(self):
         response = requests.post(
@@ -41,15 +43,15 @@ class SolrSetup:
             json=self.collection_fields,
         )
         if response.status_code != 200:
-            print(response.json().get('message'))
+            logger.error(response.json().get('message'))
             return
-        sys.stdout.write("Added fields correctly to " + self.collection_name + "\n")
+        logger.info(f"Added fields correctly to {self.collection_name}")
 
     def configure_clustering(self):
-        print("⚙️  Configuring Lingo Clustering via Solr Config API...")
+        logger.info("Configuring Lingo Clustering via Solr Config API...")
         config_url = f"{self.solr_base_url}/api/collections/{self.collection_name}/config"
 
-        # 1. Add Clustering Component
+        # add clustering component
         component_payload = {
             "add-searchcomponent": {
                 "name": "clustering",
@@ -65,7 +67,7 @@ class SolrSetup:
         }
         requests.post(config_url, json=component_payload)
 
-        # 2. Update RequestHandler to use clustering
+        # update requestHandler to use clustering
         handler_payload = {
             "update-requesthandler": {
                 "name": "/select",
@@ -81,21 +83,21 @@ class SolrSetup:
         }
         resp = requests.post(config_url, json=handler_payload)
         if resp.status_code == 200:
-            print("✅ Clustering configured successfully.")
+            logger.info("Clustering configured successfully.")
         else:
-            print("⚠️ Failed to configure clustering:", resp.text)
+            logger.error(f"Failed to configure clustering: {resp.text}")
 
     def insert_files_into_collection(self, data_path: str):
         update_url = f"{self.solr_base_url}/api/collections/{self.collection_name}/update"
         if not os.path.exists(data_path):
-            print(f"Directory {data_path} not found.")
+            logger.error(f"Directory {data_path} not found.")
             return
 
         for file in os.listdir(data_path):
             file_path = os.path.join(data_path, file)
             if not file.endswith(".json"): continue
 
-            print(f"Indexing {file}...")
+            logger.info(f"Indexing {file}...")
             try:
                 with open(file_path, "r") as f:
                     data = json.load(f)
@@ -107,14 +109,14 @@ class SolrSetup:
                         f"{self.solr_base_url}/api/collections/{self.collection_name}/config",
                         json={"set-property": {"updateHandler.autoCommit.maxTime": 15000}}
                     )
-                    print(f"✅ {file} indexed successfully")
+                    logger.info(f"File {file} indexed successfully")
                 else:
-                    print("Error indexing", file, "->", response.text)
+                    logger.error(f"Error indexing {file} -> {response.text}")
             except Exception as e:
-                print("Error processing", file, ":", e)
+                logger.error(f"Error processing {file}: {e}")
 
     def delete_collection(self):
         url = f"{self.solr_base_url}/api/collections/{self.collection_name}"
         response = requests.delete(url)
         if response.status_code == 200:
-            print(f"Collection '{self.collection_name}' deleted successfully")
+            logger.info(f"Collection '{self.collection_name}' deleted successfully")

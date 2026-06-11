@@ -1,13 +1,15 @@
 import glob
 import json
 import os
+import logging
 import subprocess
 import sys
 
+logger = logging.getLogger(__name__)
 
 def run_spiders(output_dir="raw_data"):
     os.makedirs(output_dir, exist_ok=True)
-    print(f"📂 Output directory checked: {output_dir}")
+    logger.info(f"Output directory checked: {output_dir}")
 
     commands = [
         (
@@ -33,37 +35,37 @@ def run_spiders(output_dir="raw_data"):
     ]
 
     for description, cmd in commands:
-        print(f"\n🕷️  Running {description}...")
+        logger.info(f"Running {description}...")
         try:
             subprocess.run(cmd, check=True)
-            print(f"✅ {description} finished successfully.")
+            logger.info(f"{description} finished successfully.")
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error running {description}: {e}")
+            logger.error(f"Error running {description}: {e}")
         except FileNotFoundError:
-            print(f"❌ Command not found: {cmd[0]}. Make sure Scrapy is installed and you are in the correct directory.")
+            logger.error(f"Command not found: {cmd[0]}. Make sure Scrapy is installed and you are in the correct directory.")
 
 
 def remove_duplicates(output_dir="raw_data", unique_key="id"):
-    print("\n--- Starting Duplicate Removal Process ---")
+    logger.info("--- Starting Duplicate Removal Process ---")
 
     seen_identifiers = set()
     total_duplicates_removed = 0
 
     for filepath in glob.glob(os.path.join(output_dir, '*.json')):
-        print(f"🔍 Processing file: {filepath}")
+        logger.info(f"Processing file: {filepath}")
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
         except json.JSONDecodeError:
-            print(f"⚠️ Could not decode JSON from {filepath}. Skipping.")
+            logger.warning(f"Could not decode JSON from {filepath}. Skipping.")
             continue
         except FileNotFoundError:
-            print(f"⚠️ File not found: {filepath}. Skipping.")
+            logger.warning(f"File not found: {filepath}. Skipping.")
             continue
 
         if not isinstance(data, list):
-            print(f"⚠️ Data in {filepath} is not a list. Skipping deduplication.")
+            logger.warning(f"Data in {filepath} is not a list. Skipping deduplication.")
             continue
 
         unique_data = []
@@ -81,15 +83,16 @@ def remove_duplicates(output_dir="raw_data", unique_key="id"):
         total_duplicates_removed += duplicates_in_file
 
         if duplicates_in_file > 0:
-            print(f"🧹 Removed {duplicates_in_file} duplicate(s) from {filepath}.")
+            logger.info(f"Removed {duplicates_in_file} duplicate(s) from {filepath}.")
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(unique_data, f, indent=4)
         else:
-            print(f"✨ No duplicates found in {filepath}.")
+            logger.info(f"No duplicates found in {filepath}.")
 
-    print(f"\n✅ Duplicate removal complete. Total duplicates removed across all files: {total_duplicates_removed}.")
+    logger.info(f"Duplicate removal complete. Total duplicates removed across all files: {total_duplicates_removed}.")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     run_spiders()
     remove_duplicates(unique_key="id")

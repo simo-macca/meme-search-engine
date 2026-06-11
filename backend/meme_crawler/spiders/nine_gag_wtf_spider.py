@@ -1,30 +1,31 @@
 import asyncio
 import json
 import os
+import logging
 from playwright.async_api import async_playwright, Page
+
+logger = logging.getLogger(__name__)
 
 AD_BLOCK_LIST = [
     "google-analytics.com", "googletagservices.com", "googlesyndication.com",
     "amazon-adsystem.com", "adnxs.com", "doubleclick.net", "facebook.net"
 ]
 
-
 async def handle_cookie_banner(page: Page):
-    print("🍪 Checking for cookie banner...")
+    logger.info("Checking for cookie banner...")
     selector = "button[title='Accept']"
     await page.wait_for_timeout(3000)
     try:
         for frame in page.frames:
             if await frame.query_selector(selector):
                 await frame.click(selector)
-                print("✅ Clicked cookies in iframe")
+                logger.info("Clicked cookies in iframe")
                 return
         if await page.is_visible(selector):
             await page.click(selector)
-            print("✅ Clicked cookies on main page")
+            logger.info("Clicked cookies on main page")
     except Exception:
         pass
-
 
 async def scrape_visible_articles(page: Page, memes_dict: dict):
     articles = await page.query_selector_all("article")
@@ -63,7 +64,6 @@ async def scrape_visible_articles(page: Page, memes_dict: dict):
         except:
             continue
 
-
 async def run():
     memes = {}
     target_scrolls = 100
@@ -73,7 +73,7 @@ async def run():
         os.makedirs("raw_data")
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True  )
+        browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
             viewport={"width": 1280, "height": 1000},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -84,7 +84,7 @@ async def run():
         if any(ad in route.request.url for ad in AD_BLOCK_LIST)
         else route.continue_())
 
-        print("🚀 Opening 9GAG WTF...")
+        logger.info("Opening 9GAG WTF...")
         await page.goto("https://9gag.com/interest/wtf", wait_until="domcontentloaded")
         await handle_cookie_banner(page)
 
@@ -97,12 +97,12 @@ async def run():
             await page.wait_for_timeout(3000)
 
             current_count = len(memes)
-            print(f"⬇️ 9GAGSpider WTF: Scroll {i + 1} - Memes found so far: {current_count}")
+            logger.info(f"9GAGSpider WTF: Scroll {i + 1} - Memes found so far: {current_count}")
 
             if current_count == last_count:
                 stuck_count += 1
                 if stuck_count >= 3:
-                    print("⚠️ Page seems stuck, nudging...")
+                    logger.warning("Page seems stuck, nudging...")
                     await page.mouse.wheel(0, -500)
                     await page.wait_for_timeout(1000)
                     await page.keyboard.press("End")
@@ -112,13 +112,14 @@ async def run():
 
             last_count = current_count
 
-        print(f"💾 Saving memes...")
+        logger.info("Saving memes...")
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(list(memes.values()), f, indent=2, ensure_ascii=False)
 
-        print(f"✅ 9GAGSpider WTF: Saved {len(memes)} memes to {output_file}")
+        logger.info(f"9GAGSpider WTF: Saved {len(memes)} memes to {output_file}")
 
         await browser.close()
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     asyncio.run(run())

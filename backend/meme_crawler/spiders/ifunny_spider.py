@@ -1,8 +1,6 @@
 import uuid
-
 import scrapy
 from scrapy_playwright.page import PageMethod
-
 
 class IFunnySpider(scrapy.Spider):
     name = "ifunny_spider"
@@ -15,14 +13,14 @@ class IFunnySpider(scrapy.Spider):
         scroll_actions = []
         times_to_scroll = 200
 
-        print(f"🔄 IFunnySpider: preparing to scroll the page {times_to_scroll} times. This might take a while...")
+        self.logger.info(f"IFunnySpider: preparing to scroll the page {times_to_scroll} times. This might take a while...")
 
         for i in range(times_to_scroll):
             scroll_actions.append(PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"))
             scroll_actions.append(PageMethod("wait_for_timeout", 1500))
-            print(f"⬇️  IFunnySpider: Scroll {i + 1}/{times_to_scroll}")
+            self.logger.info(f"IFunnySpider: Scroll {i + 1}/{times_to_scroll}")
 
-        print(f"⬇️ IFunnySpider: Downloading memes... this might take a while.")
+        self.logger.info("IFunnySpider: Downloading memes... this might take a while.")
 
         yield scrapy.Request(
             "https://ifunny.co/",
@@ -39,12 +37,11 @@ class IFunnySpider(scrapy.Spider):
     def parse(self, response):
         content_nodes = response.xpath('//img[contains(@src, "images")] | //video')
 
-        print(f"✅ IFunnySpider: Finished scrolling. Found {len(content_nodes)} memes.")
+        self.logger.info(f"IFunnySpider: Finished scrolling. Found {len(content_nodes)} memes.")
 
         for node in content_nodes:
             card = node.xpath('./ancestor::div[3]')
-            src = node.xpath('./@src').get() or node.xpath('./source/@src').get() or node.xpath(
-                './video/@data-src').get()
+            src = node.xpath('./@src').get() or node.xpath('./source/@src').get() or node.xpath('./video/@data-src').get()
             title = card.xpath('.//a[string-length(text()) > 1]/text()').get()
             tags = card.xpath('.//div//a//span/text()').getall()
 

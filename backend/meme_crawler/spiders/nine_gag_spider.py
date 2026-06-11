@@ -1,20 +1,21 @@
 import asyncio
 import json
-
+import logging
 from playwright.async_api import async_playwright, Page, Response
+
+logger = logging.getLogger(__name__)
 
 API_PREFIX = "https://9gag.com/v1/feed-posts"
 
-
 async def handle_cookie_banner(page: Page):
-    print("🍪 9GAGSpider: Checking for cookie banner...")
+    logger.info("9GAGSpider: Checking for cookie banner...")
 
     selector = "button[title='Accept']"
 
     try:
         if await page.is_visible(selector):
             await page.click(selector)
-            print("✅ 9GAGSpider: Clicked cookies")
+            logger.info("9GAGSpider: Clicked cookies")
         await page.wait_for_timeout(2000)
 
         for frame in page.frames:
@@ -22,16 +23,15 @@ async def handle_cookie_banner(page: Page):
                 btn = await frame.query_selector(selector)
                 if btn:
                     await btn.click()
-                    print("✅ 9GAGSpider: Clicked cookies")
+                    logger.info("9GAGSpider: Clicked cookies")
                     return
             except:
                 continue
 
-        print("❌ 9GAGSpider: No cookie banner found (or already accepted).")
+        logger.info("9GAGSpider: No cookie banner found (or already accepted).")
 
     except Exception as e:
-        print(f"⚠️ 9GAGSpider: Warning: specific cookie error: {e}")
-
+        logger.warning(f"9GAGSpider: Warning: specific cookie error: {e}")
 
 def parse_post_data(post: dict):
     try:
@@ -45,9 +45,8 @@ def parse_post_data(post: dict):
             "tags": [t["key"] for t in post.get("tags", [])],
         }
     except Exception as e:
-        print(f"9GAGSpider: Error parsing post {post.get('id')}: {e}")
+        logger.error(f"9GAGSpider: Error parsing post {post.get('id')}: {e}")
         return None
-
 
 async def run():
     memes = {}
@@ -87,29 +86,29 @@ async def run():
 
         page.on("response", handle_response)
 
-        print("🚀 9GAGSpider: Opening 9GAG...")
+        logger.info("9GAGSpider: Opening 9GAG...")
         await page.goto("https://9gag.com/", wait_until="domcontentloaded")
 
         await handle_cookie_banner(page)
 
-        print(f"📜 9GAGSpider: Starting scroll loop ({target_scrolls} iterations)...")
+        logger.info(f"9GAGSpider: Starting scroll loop ({target_scrolls} iterations)...")
 
         for i in range(target_scrolls):
             await page.keyboard.press("End")
             await page.wait_for_timeout(1000)
 
-            print(f"⬇️  9GAGSpider: Scroll {i + 1}/{target_scrolls} - Memes found so far: {len(memes)}")
+            logger.info(f"9GAGSpider: Scroll {i + 1}/{target_scrolls} - Memes found so far: {len(memes)}")
 
-        print("💾 Saving memes...")
+        logger.info("Saving memes...")
         output_file = "raw_data/9gag_memes.json"
 
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(list(memes.values()), f, indent=2, ensure_ascii=False)
 
-        print(f"✅ 9GAGSpider: Saved {len(memes)} memes to {output_file}")
+        logger.info(f"9GAGSpider: Saved {len(memes)} memes to {output_file}")
 
         await browser.close()
 
-
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     asyncio.run(run())
