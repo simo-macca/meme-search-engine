@@ -1,11 +1,13 @@
 import asyncio
 import json
 import logging
-from playwright.async_api import async_playwright, Page, Response
+
+from playwright.async_api import Page, Response, async_playwright
 
 logger = logging.getLogger(__name__)
 
 API_PREFIX = "https://9gag.com/v1/feed-posts"
+
 
 async def handle_cookie_banner(page: Page):
     logger.info("9GAGSpider: Checking for cookie banner...")
@@ -33,6 +35,7 @@ async def handle_cookie_banner(page: Page):
     except Exception as e:
         logger.warning(f"9GAGSpider: Warning: specific cookie error: {e}")
 
+
 def parse_post_data(post: dict):
     try:
         images_data = post.get("images", {})
@@ -48,19 +51,17 @@ def parse_post_data(post: dict):
         logger.error(f"9GAGSpider: Error parsing post {post.get('id')}: {e}")
         return None
 
+
 async def run():
     memes = {}
     target_scrolls = 200
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"]
-        )
+        browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
 
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
         )
         page = await context.new_page()
 
@@ -109,6 +110,7 @@ async def run():
 
         await browser.close()
 
+
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     asyncio.run(run())

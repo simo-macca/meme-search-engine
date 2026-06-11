@@ -6,9 +6,9 @@ The frontend is a modern, reactive Single Page Application (SPA) built with **Vu
 
 In a standard setup, a frontend running on port `8080` trying to communicate with a Solr backend on port `8983` will be blocked by strict Cross-Origin Resource Sharing (CORS) browser policies.
 
-To solve this natively without exposing Solr to security risks, the production Docker container wraps the built Vue application in an **Nginx** server. 
+To solve this natively without exposing Solr to security risks, the production Docker container wraps the built Vue application in an **Nginx** server.
 - Nginx serves the Vue static files on `http://localhost:8080/`.
-- Nginx intercepts any requests going to `/solr/` and seamlessly **proxies** them directly to the internal Solr container. 
+- Nginx intercepts any requests going to `/solr/` and seamlessly **proxies** them directly to the internal Solr container.
 - To the browser, the API and the UI appear to be on the exact same origin, entirely bypassing CORS.
 
 ## Local Development (Without Docker)

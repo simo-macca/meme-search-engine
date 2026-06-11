@@ -69,11 +69,7 @@ export const useMemeStore = defineStore('memes', {
     async filterByCluster(cluster = null) {
       this.start = 0
       this.selected_cluster = cluster
-      console.log(
-        `${
-          cluster ? `Applying cluster filter: ${cluster.labels?.[0]}` : '🧹 Clearing cluster filter'
-        }`,
-      )
+      console.log(`${cluster ? `Applying cluster filter: ${cluster.labels?.[0]}` : '🧹 Clearing cluster filter'}`)
       await this.performSearch()
     },
   },

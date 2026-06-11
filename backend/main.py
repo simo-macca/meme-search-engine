@@ -1,17 +1,16 @@
+import json
+import logging
 import os
 import sys
 import time
-import json
-import logging
-import requests
 from datetime import datetime, timedelta
-from run_spiders import run_spiders, remove_duplicates
+
+import requests
 from execute_solr_setup import execute_solr_setup
+from run_spiders import remove_duplicates, run_spiders
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ def should_run_scraper():
     # check if there are any data files
     has_data = False
     if os.path.exists("raw_data"):
-        has_data = any(f.endswith('.json') and f != os.path.basename(CACHE_FILE) for f in os.listdir("raw_data"))
+        has_data = any(f.endswith(".json") and f != os.path.basename(CACHE_FILE) for f in os.listdir("raw_data"))
 
     if not has_data:
         logger.warning("No scraped data files found. Forcing scrape.")
@@ -77,7 +76,7 @@ def update_scrape_cache():
 def main():
     logger.info("--- Starting Backend Automated Pipeline ---")
 
-    solr_url = os.getenv('SOLR_BASE_PATH', 'http://solr:8983')
+    solr_url = os.getenv("SOLR_BASE_PATH", "http://solr:8983")
 
     # wait solr container
     if not wait_for_solr(solr_url):

@@ -1,5 +1,7 @@
 import json
+
 import scrapy
+
 
 class MemesSpider(scrapy.Spider):
     name = "memes_spider"
@@ -14,7 +16,7 @@ class MemesSpider(scrapy.Spider):
             headers={"Content-Type": "application/json"},
             body=json.dumps({}),
             meta={"page": page},
-            callback=self.parse
+            callback=self.parse,
         )
 
     def parse(self, response):
@@ -35,7 +37,7 @@ class MemesSpider(scrapy.Spider):
                 "media_type": "image",
                 "title": post.get("postText"),
                 "media_src": f"https://cdn.memes.com/{post.get('path')}",
-                "tags": []
+                "tags": [],
             }
 
         # Next page
@@ -48,5 +50,5 @@ class MemesSpider(scrapy.Spider):
             headers={"Content-Type": "application/json"},
             body=json.dumps({}),
             meta={"page": next_page},
-            callback=self.parse
+            callback=self.parse,
         )

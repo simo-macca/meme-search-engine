@@ -52,11 +52,7 @@ const props = defineProps({
 
     <!-- Footer -->
     <div class="flex flex-wrap gap-2 border-t border-gray-100 px-4 py-3">
-      <span
-        v-for="tag in props.tags"
-        :key="tag"
-        class="h-6 rounded-full bg-gray-200 px-2 py-1 text-xs text-gray-700"
-      >
+      <span v-for="tag in props.tags" :key="tag" class="h-6 rounded-full bg-gray-200 px-2 py-1 text-xs text-gray-700">
         # {{ tag }}
       </span>
     </div>

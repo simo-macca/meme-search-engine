@@ -10,12 +10,8 @@ import SearchBar from '@/components/sidebar/SearchBar.vue'
 const store = useMemeStore()
 
 const current_docs = computed(() => store.results.length)
-const needs_scrolling = computed(
-  () => current_docs.value > 1 && store.found_docs > current_docs.value,
-)
-const how_many_pages = computed(() =>
-  current_docs.value > 0 ? Math.ceil(store.found_docs / current_docs.value) : 0,
-)
+const needs_scrolling = computed(() => current_docs.value > 1 && store.found_docs > current_docs.value)
+const how_many_pages = computed(() => (current_docs.value > 0 ? Math.ceil(store.found_docs / current_docs.value) : 0))
 
 const sidebar = ref(null)
 
@@ -32,10 +28,7 @@ function openSidebar() {
     </div>
 
     <section class="relative grid min-h-full grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-3">
-      <div
-        v-if="store.loading"
-        class="col-span-full flex min-h-full items-center justify-center text-center"
-      >
+      <div v-if="store.loading" class="col-span-full flex min-h-full items-center justify-center text-center">
         <LoadingComponent />
       </div>
       <div

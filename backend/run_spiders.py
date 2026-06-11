@@ -1,37 +1,26 @@
 import glob
 import json
-import os
 import logging
+import os
 import subprocess
 import sys
 
 logger = logging.getLogger(__name__)
+
 
 def run_spiders(output_dir="raw_data"):
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"Output directory checked: {output_dir}")
 
     commands = [
-        (
-            "9GAG Spider (Standalone)",
-            [sys.executable, "meme_crawler/spiders/nine_gag_spider.py"]
-        ),
-        (
-            "9GAG Spider (WTF)",
-            [sys.executable, "meme_crawler/spiders/nine_gag_wtf_spider.py"]
-        ),
+        ("9GAG Spider (Standalone)", [sys.executable, "meme_crawler/spiders/nine_gag_spider.py"]),
+        ("9GAG Spider (WTF)", [sys.executable, "meme_crawler/spiders/nine_gag_wtf_spider.py"]),
         (
             "Memedroid Spider",
-            ["scrapy", "crawl", "memedroid_spider", "-O", f"{output_dir}/memedroid_spider.json", "--nolog"]
+            ["scrapy", "crawl", "memedroid_spider", "-O", f"{output_dir}/memedroid_spider.json", "--nolog"],
         ),
-        (
-            "iFunny Spider",
-            ["scrapy", "crawl", "ifunny_spider", "-O", f"{output_dir}/ifunny_spider.json", "--nolog"]
-        ),
-        (
-            "Memes.com Spider",
-            ["scrapy", "crawl", "memes_spider", "-O", f"{output_dir}/memes_com.json", "--nolog"]
-        ),
+        ("iFunny Spider", ["scrapy", "crawl", "ifunny_spider", "-O", f"{output_dir}/ifunny_spider.json", "--nolog"]),
+        ("Memes.com Spider", ["scrapy", "crawl", "memes_spider", "-O", f"{output_dir}/memes_com.json", "--nolog"]),
     ]
 
     for description, cmd in commands:
@@ -42,7 +31,9 @@ def run_spiders(output_dir="raw_data"):
         except subprocess.CalledProcessError as e:
             logger.error(f"Error running {description}: {e}")
         except FileNotFoundError:
-            logger.error(f"Command not found: {cmd[0]}. Make sure Scrapy is installed and you are in the correct directory.")
+            logger.error(
+                f"Command not found: {cmd[0]}. Make sure Scrapy is installed and you are in the correct directory."
+            )
 
 
 def remove_duplicates(output_dir="raw_data", unique_key="id"):
@@ -51,11 +42,11 @@ def remove_duplicates(output_dir="raw_data", unique_key="id"):
     seen_identifiers = set()
     total_duplicates_removed = 0
 
-    for filepath in glob.glob(os.path.join(output_dir, '*.json')):
+    for filepath in glob.glob(os.path.join(output_dir, "*.json")):
         logger.info(f"Processing file: {filepath}")
 
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except json.JSONDecodeError:
             logger.warning(f"Could not decode JSON from {filepath}. Skipping.")
@@ -84,7 +75,7 @@ def remove_duplicates(output_dir="raw_data", unique_key="id"):
 
         if duplicates_in_file > 0:
             logger.info(f"Removed {duplicates_in_file} duplicate(s) from {filepath}.")
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(unique_data, f, indent=4)
         else:
             logger.info(f"No duplicates found in {filepath}.")
@@ -93,6 +84,6 @@ def remove_duplicates(output_dir="raw_data", unique_key="id"):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     run_spiders()
     remove_duplicates(unique_key="id")

@@ -16,10 +16,7 @@ const emit = defineEmits(['clear'])
       Topic: {{ props.cluster.labels[0] }}
     </span>
 
-    <button
-      @click="emit('clear')"
-      class="ml-auto cursor-pointer text-xs text-blue-500 hover:underline"
-    >
+    <button @click="emit('clear')" class="ml-auto cursor-pointer text-xs text-blue-500 hover:underline">
       Clear all
     </button>
   </div>

@@ -1,23 +1,35 @@
 import uuid
+
 import scrapy
 from scrapy_playwright.page import PageMethod
+
 
 class MemedroidSpider(scrapy.Spider):
     name = "memedroid_spider"
 
     custom_settings = {
-        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'ROBOTSTXT_OBEY': False,
-        'PLAYWRIGHT_LAUNCH_OPTIONS': {
-            'headless': True,
-            'args': ['--disable-blink-features=AutomationControlled'],
+        "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "ROBOTSTXT_OBEY": False,
+        "PLAYWRIGHT_LAUNCH_OPTIONS": {
+            "headless": True,
+            "args": ["--disable-blink-features=AutomationControlled"],
         },
-        'PLAYWRIGHT_ABORT_REQUEST': lambda req: any(x in req.url for x in [
-            "google-analytics", "doubleclick", "gumgum", "criteo", "pubmatic",
-            "amazon-adsystem", "smilewanted", "adnxs", "rubiconproject"
-        ]),
-        'DOWNLOAD_DELAY': 2,
-        'LOG_LEVEL': 'INFO',
+        "PLAYWRIGHT_ABORT_REQUEST": lambda req: any(
+            x in req.url
+            for x in [
+                "google-analytics",
+                "doubleclick",
+                "gumgum",
+                "criteo",
+                "pubmatic",
+                "amazon-adsystem",
+                "smilewanted",
+                "adnxs",
+                "rubiconproject",
+            ]
+        ),
+        "DOWNLOAD_DELAY": 2,
+        "LOG_LEVEL": "INFO",
     }
 
     def start_requests(self):
@@ -37,7 +49,7 @@ class MemedroidSpider(scrapy.Spider):
                         PageMethod("wait_for_selector", "div.gallery-memes-container article", timeout=15000),
                     ],
                 },
-                callback=self.parse
+                callback=self.parse,
             )
 
     def parse(self, response):
@@ -49,7 +61,7 @@ class MemedroidSpider(scrapy.Spider):
 
         for node in content_nodes:
             card = node.xpath('./ancestor::article[contains(@class, "gallery-item")]')
-            src = node.xpath('./@src').get() or node.xpath('./source/@srcset').get() or node.xpath('./@data-src').get()
+            src = node.xpath("./@src").get() or node.xpath("./source/@srcset").get() or node.xpath("./@data-src").get()
             title = card.xpath('.//a[contains(@class, "item-header-title")]/text()').get()
             tags = card.xpath('.//div[contains(@class, "tags-container")]/a/text()').getall()
 

@@ -1,15 +1,22 @@
 import asyncio
 import json
-import os
 import logging
-from playwright.async_api import async_playwright, Page
+import os
+
+from playwright.async_api import Page, async_playwright
 
 logger = logging.getLogger(__name__)
 
 AD_BLOCK_LIST = [
-    "google-analytics.com", "googletagservices.com", "googlesyndication.com",
-    "amazon-adsystem.com", "adnxs.com", "doubleclick.net", "facebook.net"
+    "google-analytics.com",
+    "googletagservices.com",
+    "googlesyndication.com",
+    "amazon-adsystem.com",
+    "adnxs.com",
+    "doubleclick.net",
+    "facebook.net",
 ]
+
 
 async def handle_cookie_banner(page: Page):
     logger.info("Checking for cookie banner...")
@@ -27,6 +34,7 @@ async def handle_cookie_banner(page: Page):
     except Exception:
         pass
 
+
 async def scrape_visible_articles(page: Page, memes_dict: dict):
     articles = await page.query_selector_all("article")
     for article in articles:
@@ -39,7 +47,7 @@ async def scrape_visible_articles(page: Page, memes_dict: dict):
             title = await title_el.inner_text() if title_el else ""
 
             tag_elements = await article.query_selector_all("a[href*='/tag/']")
-            tags = [(await t.inner_text()).strip().lstrip('#') for t in tag_elements]
+            tags = [(await t.inner_text()).strip().lstrip("#") for t in tag_elements]
 
             video_el = await article.query_selector("video source")
             img_el = await article.query_selector("img.post-img, .image-container img")
@@ -59,10 +67,11 @@ async def scrape_visible_articles(page: Page, memes_dict: dict):
                     "title": title.strip(),
                     "media_type": media_type,
                     "media_src": media_src,
-                    "tags": list(set(tags))
+                    "tags": list(set(tags)),
                 }
         except:
             continue
+
 
 async def run():
     memes = {}
@@ -76,13 +85,14 @@ async def run():
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
             viewport={"width": 1280, "height": 1000},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
 
         page = await context.new_page()
-        await page.route("**/*", lambda route: route.abort()
-        if any(ad in route.request.url for ad in AD_BLOCK_LIST)
-        else route.continue_())
+        await page.route(
+            "**/*",
+            lambda route: route.abort() if any(ad in route.request.url for ad in AD_BLOCK_LIST) else route.continue_(),
+        )
 
         logger.info("Opening 9GAG WTF...")
         await page.goto("https://9gag.com/interest/wtf", wait_until="domcontentloaded")
@@ -120,6 +130,7 @@ async def run():
 
         await browser.close()
 
+
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     asyncio.run(run())

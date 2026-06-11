@@ -15,9 +15,7 @@ const handleClear = () => (model.value = '')
 </script>
 
 <template>
-  <div
-    class="flex items-stretch space-x-2 rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
-  >
+  <div class="flex items-stretch space-x-2 rounded-xl border border-gray-200 bg-white p-1 shadow-xl">
     <div class="flex items-center p-2 text-gray-500">
       <Search class="cursor-pointer" :size="20" @click="emit('search')" />
     </div>
@@ -47,11 +45,7 @@ const handleClear = () => (model.value = '')
       </span>
     </button>
 
-    <button
-      v-if="showClearButton"
-      @click="handleClear"
-      class="rounded-full p-1 text-gray-400 hover:text-gray-600"
-    >
+    <button v-if="showClearButton" @click="handleClear" class="rounded-full p-1 text-gray-400 hover:text-gray-600">
       <X :size="20" />
     </button>
   </div>

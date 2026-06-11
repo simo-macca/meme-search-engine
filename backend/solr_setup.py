@@ -1,20 +1,21 @@
 import json
-import os
-import sys
 import logging
+import os
+
 import requests
 
 logger = logging.getLogger(__name__)
 
+
 class SolrSetup:
-    collection_name: str = 'memes_collection'
+    collection_name: str = "memes_collection"
     collection_fields: dict[str, list[dict[str, str | bool]]] = {
         "add-field": [
             {"name": "id", "type": "string", "multiValued": False, "stored": True},
             {"name": "media_type", "type": "string", "multiValued": False, "stored": True},
             {"name": "title", "type": "text_general", "multiValued": False, "stored": True},
             {"name": "media_src", "type": "string", "multiValued": False, "stored": True},
-            {"name": "tags", "type": "string", "multiValued": True, "stored": True}
+            {"name": "tags", "type": "string", "multiValued": True, "stored": True},
         ]
     }
 
@@ -43,7 +44,7 @@ class SolrSetup:
             json=self.collection_fields,
         )
         if response.status_code != 200:
-            logger.error(response.json().get('message'))
+            logger.error(response.json().get("message"))
             return
         logger.info(f"Added fields correctly to {self.collection_name}")
 
@@ -56,13 +57,7 @@ class SolrSetup:
             "add-searchcomponent": {
                 "name": "clustering",
                 "class": "org.apache.solr.handler.clustering.ClusteringComponent",
-                "engine": [
-                    {
-                        "name": "lingo",
-                        "clustering.fields": "tags",
-                        "clustering.algorithm": "Lingo"
-                    }
-                ]
+                "engine": [{"name": "lingo", "clustering.fields": "tags", "clustering.algorithm": "Lingo"}],
             }
         }
         requests.post(config_url, json=component_payload)
@@ -72,13 +67,8 @@ class SolrSetup:
             "update-requesthandler": {
                 "name": "/select",
                 "class": "solr.SearchHandler",
-                "defaults": {
-                    "echoParams": "explicit",
-                    "rows": 10,
-                    "clustering": True,
-                    "clustering.engine": "lingo"
-                },
-                "last-components": ["clustering"]
+                "defaults": {"echoParams": "explicit", "rows": 10, "clustering": True, "clustering.engine": "lingo"},
+                "last-components": ["clustering"],
             }
         }
         resp = requests.post(config_url, json=handler_payload)
@@ -95,7 +85,8 @@ class SolrSetup:
 
         for file in os.listdir(data_path):
             file_path = os.path.join(data_path, file)
-            if not file.endswith(".json"): continue
+            if not file.endswith(".json"):
+                continue
 
             logger.info(f"Indexing {file}...")
             try:
@@ -107,7 +98,7 @@ class SolrSetup:
                 if response.status_code == 200:
                     requests.post(
                         f"{self.solr_base_url}/api/collections/{self.collection_name}/config",
-                        json={"set-property": {"updateHandler.autoCommit.maxTime": 15000}}
+                        json={"set-property": {"updateHandler.autoCommit.maxTime": 15000}},
                     )
                     logger.info(f"File {file} indexed successfully")
                 else:

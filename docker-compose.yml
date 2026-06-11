@@ -4,7 +4,6 @@ services:
     container_name: memes_solr
     ports:
       - "8983:8983"
-    # Runs Solr in cloud mode, foreground, and enables the clustering modules
     command: ["solr", "-cloud", "-f", "-Dsolr.modules=clustering", "-Dsolr.clustering.enabled=true"]
     volumes:
       - solr_data:/var/solr

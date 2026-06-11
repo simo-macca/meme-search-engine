@@ -34,12 +34,8 @@ const removeTag = (tag) => {
 </script>
 
 <template>
-  <div
-    class="mt-3 rounded-xl border border-gray-300 bg-white p-4 shadow-md transition-all duration-500"
-  >
-    <h3 class="mb-3 border-b border-gray-200 pb-2 text-sm font-semibold text-gray-700">
-      Apply filters
-    </h3>
+  <div class="mt-3 rounded-xl border border-gray-300 bg-white p-4 shadow-md transition-all duration-500">
+    <h3 class="mb-3 border-b border-gray-200 pb-2 text-sm font-semibold text-gray-700">Apply filters</h3>
 
     <div class="grid grid-cols-2 gap-3">
       <div

@@ -60,11 +60,7 @@ const clearAllFilters = () => {
         @search="performSearch"
       />
 
-      <ActiveFiltersBar
-        :cluster="store.selected_cluster"
-        :count="activeFilterCount"
-        @clear="clearAllFilters"
-      />
+      <ActiveFiltersBar :cluster="store.selected_cluster" :count="activeFilterCount" @clear="clearAllFilters" />
 
       <FilterPanel v-if="isFilterOpen" v-model:filters="activeFilters" @search="performSearch" />
     </div>

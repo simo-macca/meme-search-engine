@@ -25,8 +25,7 @@ export async function fetchClusters() {
 export async function searchForAMeme(title, media_type, tags, start, cluster_docs) {
   const filters = []
 
-  if (cluster_docs && cluster_docs.length > 0)
-    filters.push(`{!terms f=id}${cluster_docs.join(',')}`)
+  if (cluster_docs && cluster_docs.length > 0) filters.push(`{!terms f=id}${cluster_docs.join(',')}`)
   if (tags) filters.push(`tags:${tags}`)
   if (media_type) filters.push(`media_type:${media_type}`)
 

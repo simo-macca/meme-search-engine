@@ -1,15 +1,16 @@
-import os
 import logging
+import os
+
 import requests
+from dotenv import find_dotenv, load_dotenv
 from solr_setup import SolrSetup
-from dotenv import load_dotenv, find_dotenv
 
 logger = logging.getLogger(__name__)
 
 load_dotenv(find_dotenv())
 
-SOLR_BASE_PATH = os.getenv('SOLR_BASE_PATH')
-FILES_TO_INDEX_FOLDER = os.getenv('FILES_TO_INDEX_FOLDER')
+SOLR_BASE_PATH = os.getenv("SOLR_BASE_PATH")
+FILES_TO_INDEX_FOLDER = os.getenv("FILES_TO_INDEX_FOLDER")
 
 
 def collection_exists(solr_base_url: str, collection_name: str) -> bool:
@@ -37,6 +38,7 @@ def execute_solr_setup():
 
     logger.info("Indexing new memes...")
     solr.insert_files_into_collection(FILES_TO_INDEX_FOLDER)
+
 
 if __name__ == "__main__":
     logging.basicConfig()
