@@ -1,0 +1,35 @@
+services:
+  solr:
+    image: solr:9
+    container_name: memes_solr
+    ports:
+      - "8983:8983"
+    # Runs Solr in cloud mode, foreground, and enables the clustering modules
+    command: ["solr", "-cloud", "-f", "-Dsolr.modules=clustering", "-Dsolr.clustering.enabled=true"]
+    volumes:
+      - solr_data:/var/solr
+
+  backend:
+    build:
+      context: ./backend
+    container_name: memes_backend
+    environment:
+      - SOLR_BASE_PATH=http://solr:8983
+      - FILES_TO_INDEX_FOLDER=./raw_data
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend/raw_data:/app/raw_data
+    depends_on:
+      - solr
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: memes_frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - solr
+
+volumes:
+  solr_data:
