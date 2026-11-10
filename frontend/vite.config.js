@@ -13,4 +13,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    port: 3000,
+    // Forward Solr requests to the local Solr container during development (avoids CORS)
+    proxy: {
+      '/solr': process.env.SOLR_PROXY_TARGET || 'http://localhost:8983',
+    },
+  },
 })

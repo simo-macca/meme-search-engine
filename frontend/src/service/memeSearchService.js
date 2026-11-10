@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const SOLR_BASE_PATH = import.meta.env.VITE_SOLR_PATH
+const SOLR_BASE_PATH = import.meta.env.VITE_SOLR_PATH || ''
 const SOLR_URL = `${SOLR_BASE_PATH}/solr/memes_collection/select`
 
 export async function fetchClusters() {

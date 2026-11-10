@@ -95,6 +95,7 @@ fabric.properties
 # General
 .AppleDouble
 .LSOverride
+.DS_Store
 
 # Icon must end with two \r
 Icon

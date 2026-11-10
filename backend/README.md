@@ -1,52 +1,63 @@
-# Backend Data Pipeline & Solr Orchestrator
+# Backend: Crawling Pipeline & Solr Setup
 
-The backend is an automated Python data pipeline responsible for scraping meme platforms, cleaning and deduplicating data, configuring Apache Solr via its REST APIs, and indexing documents with unsupervised Carrot2 **Lingo** clustering enabled.
+The backend is a Python data pipeline that crawls meme platforms, removes duplicate memes, configures Apache Solr through its REST APIs, and indexes the documents with Carrot2 **Lingo** clustering enabled.
 
-It runs as an **ephemeral Docker container**: it boots up, waits for Solr to become healthy, executes the scraping and indexing pipeline, and gracefully exits once all data is loaded.
+It runs as a **one-off Docker container**: it starts, waits for Solr to respond, runs the crawling and indexing pipeline, and exits once all data is loaded.
 
 ---
 
-## Pipeline Execution Workflow
+## Pipeline Workflow
 
-The orchestrator entry point is [`main.py`](main.py). It coordinates the pipeline in two distinct phases:
+The entry point is [`main.py`](main.py). It runs the pipeline in two phases:
 
 ```mermaid
 flowchart TD
-    A["Container Start (main.py)"] --> B["wait_for_solr()<br/>Poll http://solr:8983/solr/admin/info/system"]
-    B --> C{"should_run_scraper()<br/>Check raw_data/ & cache expiry"}
-    C -- "No data or cache > 7 days" --> D["run_spiders()<br/>Run Playwright & Scrapy Spiders"]
-    D --> E["remove_duplicates()<br/>Deduplicate JSON files by unique id"]
+    A["Container start (main.py)"] --> B["wait_for_solr()<br/>Poll /solr/admin/info/system every 3 s (timeout 120 s)"]
+    B --> C{"should_run_scraper()<br/>Check raw_data/ & cache age"}
+    C -- "No data, no metadata, or cache > 7 days" --> D["run_spiders()<br/>Run Playwright scripts & Scrapy spiders"]
+    D --> E["remove_duplicates()<br/>Drop memes whose id was already seen"]
     E --> F["update_scrape_cache()<br/>Write scrape_metadata.json"]
-    C -- "Cache valid (< 7 days)" --> G["Skip Spiders (Use existing JSONs)"]
+    C -- "Cache valid (< 7 days)" --> G["Skip crawling (reuse existing JSON files)"]
     F --> H["execute_solr_setup()"]
     G --> H
-    H --> I["Recreate memes_collection"]
-    I --> J["Add Schema Fields (id, media_type, title, media_src, tags)"]
-    J --> K["Inject Carrot2 Lingo ClusteringComponent into /select"]
-    K --> L["Batch Index all raw_data/*.json into Solr"]
-    L --> M["Container Exits Cleanly (Status 0)"]
+    H --> I["Delete memes_collection if it exists, then create it"]
+    I --> J["Add schema fields (id, media_type, title, media_src, tags)"]
+    J --> K["Add Lingo ClusteringComponent to /select"]
+    K --> L["Index every raw_data/*.json file into Solr"]
+    L --> M["Container exits"]
 ```
+
+If Solr does not respond within 120 seconds, the pipeline exits with status `1`. The collection is dropped and rebuilt on **every** start, even when crawling is skipped.
 
 ---
 
-## Spiders & Data Sources
+## Crawlers & Data Sources
 
-The scraping system combines **Playwright** and **Scrapy** to handle client-side JavaScript rendering, dynamic infinite scrolling, and anti-scraping mechanisms across five target streams:
+Two of the crawlers are standalone **Playwright** scripts; the other three are **Scrapy** spiders (two of them render pages through **scrapy-playwright**):
 
-| Spider | Script | Technology | Target URL | Extraction Strategy |
+| Source | Script | Technology | Target URL | Extraction Strategy |
 | :--- | :--- | :--- | :--- | :--- |
-| **9GAG (Hot / Fresh)** | [`nine_gag_spider.py`](meme_crawler/spiders/nine_gag_spider.py) | Standalone Playwright | `https://9gag.com` | Automatically accepts cookie consent dialogues, performs page scrolls, and intercepts JSON responses from the internal 9GAG API (`/v1/feed-posts`). |
-| **9GAG (WTF Tag)** | [`nine_gag_wtf_spider.py`](meme_crawler/spiders/nine_gag_wtf_spider.py) | Standalone Playwright | `https://9gag.com/tag/wtf` | Targets 9GAG's dedicated WTF section, capturing niche tag clusters via API interception. |
-| **Memedroid** | [`memedroid_spider.py`](meme_crawler/spiders/memedroid_spider.py) | Scrapy + Playwright | `https://www.memedroid.com/memes/trending?page=N` | Paginates through trending pages (1 to 200). Uses `PLAYWRIGHT_ABORT_REQUEST` to block heavy ad networks (Google, Amazon, Criteo) to accelerate scraping. |
-| **iFunny** | [`ifunny_spider.py`](meme_crawler/spiders/ifunny_spider.py) | Scrapy + Playwright | `https://ifunny.co/` | Uses automated Playwright page methods to execute 200 incremental viewport scrolls, triggering infinite loading of meme feed cards. |
-| **Memes.com** | [`memes_spider.py`](meme_crawler/spiders/memes_spider.py) | Scrapy (HTTP/REST) | `https://api.memes.com/api/trending/feed` | Submits paginated POST requests directly to the internal feed endpoint, extracting trending post objects. |
+| **9GAG (home feed)** | [`nine_gag_spider.py`](meme_crawler/spiders/nine_gag_spider.py) | Standalone Playwright | `https://9gag.com/` | Accepts the cookie banner, presses `End` 200 times (1 s apart), and reads the JSON responses of 9GAG's internal feed API (`/v1/feed-posts`). Output: `raw_data/9gag_memes.json`. |
+| **9GAG (WTF)** | [`nine_gag_wtf_spider.py`](meme_crawler/spiders/nine_gag_wtf_spider.py) | Standalone Playwright | `https://9gag.com/interest/wtf` | Blocks ad/tracking domains, scrolls up to 100 times (3 s apart) with a "nudge" if no new posts appear, and reads title, tags and media from the `<article>` elements in the page. Output: `raw_data/9gag_memes_wtf.json`. |
+| **Memedroid** | [`memedroid_spider.py`](meme_crawler/spiders/memedroid_spider.py) | Scrapy + scrapy-playwright | `https://www.memedroid.com/memes/trending?page=N` | Requests trending pages 1 to 200 and parses the gallery items. Aborts requests to ad networks (`PLAYWRIGHT_ABORT_REQUEST`) to speed up rendering. **Overrides `ROBOTSTXT_OBEY` to `False`.** |
+| **iFunny** | [`ifunny_spider.py`](meme_crawler/spiders/ifunny_spider.py) | Scrapy + scrapy-playwright | `https://ifunny.co/` | Loads the home feed in a single request and scrolls to the bottom 200 times (1.5 s apart) to trigger infinite loading, then parses all images and videos. |
+| **Memes.com** | [`memes_spider.py`](meme_crawler/spiders/memes_spider.py) | Scrapy (plain HTTP) | `https://api.memes.com/api/trending/feed?page=N` | Sends POST requests to the internal trending feed API, page by page, until a page returns no posts. Every item is stored as `image` and without tags. |
+
+For iFunny and Memedroid, which do not expose a stable post ID, the `id` is a UUIDv5 derived from the media URL. The global Scrapy settings ([`settings.py`](meme_crawler/settings.py)) obey `robots.txt`, use one concurrent request per domain, and wait 2 seconds between requests.
+
+---
+
+## Deduplication
+
+`remove_duplicates()` in [`run_spiders.py`](run_spiders.py) goes through all `raw_data/*.json` files and keeps only the first occurrence of each `id` across all files. Items without an `id` are dropped. Files that are not a JSON list (such as `scrape_metadata.json`) are skipped.
 
 ---
 
 ## Data Schema & Format
 
-### 1. Raw JSON Document Structure
-Each spider extracts items conforming to the following structure and stores them in `raw_data/<spider_name>.json`:
+### 1. Raw JSON Document
+
+Every crawler produces items with this structure:
 
 ```json
 {
@@ -59,66 +70,76 @@ Each spider extracts items conforming to the following structure and stores them
 ```
 
 ### 2. Solr Collection Schema
-Configured dynamically by [`SolrSetup.add_fields_to_collection()`](solr_setup.py):
+
+Fields submitted by [`SolrSetup.add_fields_to_collection()`](solr_setup.py) through the Schema API:
 
 | Field Name   | Type           | Multi-Valued | Stored | Purpose                                                |
 |:-------------|:---------------|:-------------|:-------|:-------------------------------------------------------|
 | `id`         | `string`       | `false`      | `true` | Unique document identifier.                            |
-| `media_type` | `string`       | `false`      | `true` | Media classification (`image` or `video`).             |
-| `title`      | `text_general` | `false`      | `true` | Full-text tokenized and searchable title field.        |
-| `media_src`  | `string`       | `false`      | `true` | Direct CDN URL for image or video playback.            |
-| `tags`       | `string`       | `true`       | `true` | Array of tags used for filtering and Lingo clustering. |
+| `media_type` | `string`       | `false`      | `true` | Media type (`image` or `video`).                       |
+| `title`      | `text_general` | `false`      | `true` | Tokenized, full-text searchable title.                 |
+| `media_src`  | `string`       | `false`      | `true` | Direct URL of the image or video.                      |
+| `tags`       | `string`       | `true`       | `true` | List of tags used for filtering and Lingo clustering.  |
+
+The collection is created from Solr's `_default` configset (1 shard, replication factor 1).
 
 ---
 
 ## Carrot2 Lingo Clustering Configuration
 
-Apache Solr 9 includes native clustering support powered by the **Carrot2** framework. The setup script dynamically injects clustering into the Solr collection via the Solr Config API (`/api/collections/memes_collection/config`):
+Solr 9 ships a clustering module based on the **Carrot2** framework. [`SolrSetup.configure_clustering()`](solr_setup.py) enables it through the Config API (`/api/collections/memes_collection/config`):
 
-1. **Clustering Search Component:**
-   ```json
-   {
-     "add-searchcomponent": {
-       "name": "clustering",
-       "class": "org.apache.solr.handler.clustering.ClusteringComponent",
-       "engine": [
-         {
-           "name": "lingo",
-           "clustering.fields": "tags",
-           "clustering.algorithm": "Lingo"
-         }
-       ]
-     }
-   }
-   ```
-2. **Request Handler Update (`/select`):**
-   Appends the clustering component to `/select` with defaults `clustering=true` and `clustering.engine=lingo`.
-3. **Commit Policy:** Sets `updateHandler.autoCommit.maxTime = 15000` (15 seconds) to ensure all newly indexed batches are made searchable.
+1. **Clustering search component**
+
+    ```json
+    {
+      "add-searchcomponent": {
+        "name": "clustering",
+        "class": "org.apache.solr.handler.clustering.ClusteringComponent",
+        "engine": [
+          {
+            "name": "lingo",
+            "clustering.fields": "tags",
+            "clustering.algorithm": "Lingo"
+          }
+        ]
+      }
+    }
+    ```
+
+2. **`/select` request handler**
+   Adds `clustering` to the handler's `last-components` and sets the defaults `clustering=true`, `clustering.engine=lingo`, and `rows=10`. As a result, every `/select` request computes clusters over the documents it returns unless `clustering=false` is passed.
+3. **Commit setting**
+   After each file is indexed successfully, the script sets `updateHandler.autoCommit.maxTime` to `15000` ms through the Config API.
 
 ---
 
-## Smart 7-Day Caching System
+## 7-Day Scrape Cache
 
-To avoid repeated lengthy scraping jobs across multiple container runs:
-- Scraped JSON files are persisted in the host directory `./backend/raw_data`, mapped into the container volume `/app/raw_data`.
-- Metadata is recorded in `raw_data/scrape_metadata.json`:
+To avoid re-running the slow crawlers on every start:
+
+- Scraped JSON files are written to `./backend/raw_data` on the host, mounted in the container at `/app/raw_data`.
+- The time of the last crawl is stored in `raw_data/scrape_metadata.json`:
+
   ```json
   {
     "last_run": "2026-10-21T10:30:00.000000"
   }
   ```
-- If the metadata timestamp is under 7 days old and JSON data exists, the scraping phase is bypassed and the system immediately proceeds to Solr collection setup and document indexing.
 
-### How to Force a Fresh Scrape
-To force the spiders to re-crawl all target platforms:
+- Crawling is skipped if at least one data file exists **and** the timestamp is less than 7 days old. Otherwise all crawlers run again.
+
+### Forcing a Fresh Crawl
+
 ```bash
-# Option 1: Remove the metadata timestamp
+# Option 1: delete only the cache timestamp
 rm backend/raw_data/scrape_metadata.json
 
-# Option 2: Remove all existing scraped data
+# Option 2: delete all scraped data
 rm -rf backend/raw_data/*
 ```
-Upon restarting the container (`docker compose up backend`), the missing cache triggers a full scrape.
+
+Then start the backend again with `docker compose up backend`.
 
 ---
 
@@ -126,75 +147,90 @@ Upon restarting the container (`docker compose up backend`), the missing cache t
 
 ```text
 backend/
-├── Dockerfile                   # Python 3.12-slim container with Playwright and Chromium
+├── .gitignore
+├── Dockerfile                   # python:3.12-slim + Playwright Chromium
 ├── README.md                    # Backend documentation
-├── execute_solr_setup.py        # Entry point for Solr collection setup and document indexing
-├── main.py                      # Orchestrator running healthcheck, spiders, and Solr setup
-├── meme_crawler/                # Scrapy crawler project
+├── execute_solr_setup.py        # Recreates the collection and indexes the data
+├── main.py                      # Entry point: Solr health check, crawling, Solr setup
+├── meme_crawler/                # Scrapy project
 │   ├── __init__.py
-│   ├── settings.py              # Scrapy configuration (headers, delays, Twisted reactor)
+│   ├── settings.py              # Scrapy settings (headers, delays, asyncio reactor, Playwright)
 │   └── spiders/
 │       ├── __init__.py
-│       ├── ifunny_spider.py     # iFunny Scrapy + Playwright spider
-│       ├── memedroid_spider.py  # Memedroid Scrapy + Playwright spider
-│       ├── memes_spider.py      # Memes.com API Scrapy spider
-│       ├── nine_gag_spider.py   # 9GAG standalone Playwright spider
-│       └── nine_gag_wtf_spider.py # 9GAG WTF tag standalone Playwright spider
-├── raw_data/                    # Output directory for scraped JSONs and cache metadata (gitignored)
+│       ├── ifunny_spider.py         # iFunny (Scrapy + Playwright)
+│       ├── memedroid_spider.py      # Memedroid (Scrapy + Playwright)
+│       ├── memes_spider.py          # Memes.com API (Scrapy)
+│       ├── nine_gag_spider.py       # 9GAG home feed (standalone Playwright)
+│       └── nine_gag_wtf_spider.py   # 9GAG WTF interest page (standalone Playwright)
+├── raw_data/                    # Scraped JSON files and cache metadata (gitignored, created at runtime)
 ├── requirements.txt             # Python dependencies
-├── run_spiders.py               # Spider execution runner and cross-file deduplication logic
-├── scrapy.cfg                   # Scrapy deployment configuration
-└── solr_setup.py                # SolrSetup class wrapping Solr REST API endpoints
+├── run_spiders.py               # Runs all crawlers and removes duplicates
+├── scrapy.cfg                   # Scrapy project configuration
+└── solr_setup.py                # SolrSetup class wrapping the Solr REST APIs
 ```
 
 ---
 
 ## Environment Variables
 
-| Variable                | Description                                            | Docker Default     | Local Dev Default       |
-|:------------------------|:-------------------------------------------------------|:-------------------|:------------------------|
-| `SOLR_BASE_PATH`        | Base URL of the Apache Solr instance.                  | `http://solr:8983` | `http://localhost:8983` |
-| `FILES_TO_INDEX_FOLDER` | Path to the directory containing JSON files to index.  | `./raw_data`       | `./raw_data`            |
-| `PYTHONUNBUFFERED`      | Ensures Python logs are flushed immediately to stdout. | `1`                | `1`                     |
+Variables can also be defined in a `.env` file, which is loaded with `python-dotenv`.
+
+| Variable                | Description                                              | Value in Docker Compose | Default if unset |
+|:------------------------|:---------------------------------------------------------|:------------------------|:-----------------|
+| `SOLR_BASE_PATH`        | Base URL of the Solr instance.                           | `http://solr:8983`      | None for Solr setup and indexing (**required**); `main.py` falls back to `http://solr:8983` for the health check only. |
+| `FILES_TO_INDEX_FOLDER` | Folder containing the JSON files to index.               | `./raw_data`            | None (**required**). |
+| `PYTHONUNBUFFERED`      | Makes Python write logs to stdout immediately.           | `1`                     | Not set. |
+
+> The crawlers always write to `raw_data/` relative to the working directory, regardless of `FILES_TO_INDEX_FOLDER`.
 
 ---
 
 ## Local Development (Without Docker)
 
 ### 1. Prerequisites
-- **Python**: `3.12+`
-- **Solr**: A running Apache Solr 9 instance with clustering enabled (`docker compose up solr -d`).
 
-### 2. Setup Virtual Environment
+- **Python** `3.12+`
+- A running **Solr 9** instance with clustering enabled: `docker compose up solr -d` from the repository root.
+
+### 2. Create a Virtual Environment
+
 ```bash
 cd backend
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. Install Dependencies & Playwright Browsers
+### 3. Install Dependencies and the Playwright Browser
+
 ```bash
 pip install -r requirements.txt
 playwright install --with-deps chromium
 ```
 
 ### 4. Run the Full Pipeline
+
 ```bash
 export SOLR_BASE_PATH="http://localhost:8983"
 export FILES_TO_INDEX_FOLDER="./raw_data"
 python main.py
 ```
 
-### 5. Running Components Standalone
+### 5. Run Single Steps
 
-- **Run only the spiders:**
+All commands must be run from the `backend/` folder.
+
+- **Run all crawlers and remove duplicates (no indexing):**
+
   ```bash
   python run_spiders.py
   ```
 
-- **Run a single spider:**
+- **Run a single crawler:**
+
   ```bash
-  # 9GAG
+  mkdir -p raw_data
+
+  # 9GAG home feed
   python meme_crawler/spiders/nine_gag_spider.py
 
   # 9GAG WTF
@@ -210,7 +246,8 @@ python main.py
   scrapy crawl memes_spider -O raw_data/memes_com.json
   ```
 
-- **Run only the Solr setup & indexing:**
+- **Run only the Solr setup and indexing** (requires both environment variables):
+
   ```bash
   python execute_solr_setup.py
   ```
