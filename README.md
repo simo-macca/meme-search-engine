@@ -12,7 +12,7 @@
 
 An end-to-end **Information Retrieval (IR)** and **document clustering** system that crawls, deduplicates, indexes, clusters, and searches memes from popular humor platforms. The web interface is branded **WDYMEME**.
 
-The project was developed as a **university project** for the course **[Course name]** at **[University]** ([academic year]) by **Alessandra Sasanelli** and **Simone Maccario**. It combines headless web scraping, Apache Solr full-text indexing with the **Carrot2 Lingo** clustering algorithm, and a Vue.js 3 user interface.
+The project was developed as a **university project** for the course **Information Retrieval** at **USI** (2026) by **Alessandra Sasanelli** and **Simone Maccario**. It combines headless web scraping, Apache Solr full-text indexing with the **Carrot2 Lingo** clustering algorithm, and a Vue.js 3 user interface.
 
 <!-- Add a screenshot or GIF of the UI here, e.g. ![WDYMEME screenshot](docs/screenshot.png) -->
 
